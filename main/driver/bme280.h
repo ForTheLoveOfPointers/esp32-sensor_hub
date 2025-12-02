@@ -11,5 +11,20 @@
 #define I2C_MASTER_TIMEOUT_MS 2000
 #define TAG "bme_driver"
 
+typedef struct bme280_DeviceBus
+{
+    i2c_master_bus_handle_t bus_handle;
+    i2c_master_dev_handle_t dev_handle;
+} bme280_DeviceBus;
 
-void bme280_init(void);
+typedef struct {
+    float temperature;
+    float humidity;
+    float pressure;
+} bme280_data_t;
+
+
+
+void bme_init(void);
+
+esp_err_t bme280_register_read(i2c_master_dev_handle_t dev_handle, uint8_t reg_addr, uint8_t *data, size_t len)
