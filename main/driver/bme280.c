@@ -39,6 +39,61 @@ static esp_err_t bme280_register_read(uint8_t reg_addr, uint8_t *data, size_t le
 }
 
 /**
+ * This is the real difficult part. Compensation formulas must be applied to the data you read, so I should get that,
+ * read the compensation registers and then use the compensated values to output the correct measurements. 
+ * A few days may be needed, as I lack the required time, but the BME datasheet provides pretty much everything.
+ */
+
+static void bme280_read_calibration(bme280_calib_data_t *cal) {
+
+    uint8_t buf1[25];
+    uint8_t buf2[7];
+
+    // T and P calibration (0x88–0xA1)
+    bme280_register_read(0x88, buf1, 25);
+
+    // H calibration part 1 (0xA1)
+    cal->dig_H1 = buf1[25];
+
+    // H calibration part 2 (0xE1–0xE7)
+    bme280_register_read(0xE1, buf2, 7);
+
+    cal->dig_T1 = (buf1[1] << 8)  | buf1[0];
+    cal->dig_T2 = (buf1[3] << 8)  | buf1[2];
+    cal->dig_T3 = (buf1[5] << 8)  | buf1[4];
+
+    cal->dig_P1 = (buf1[7] << 8)  | buf1[6];
+    cal->dig_P2 = (buf1[9] << 8)  | buf1[8];
+    cal->dig_P3 = (buf1[11] << 8) | buf1[10];
+    cal->dig_P4 = (buf1[13] << 8) | buf1[12];
+    cal->dig_P5 = (buf1[15] << 8) | buf1[14];
+    cal->dig_P6 = (buf1[17] << 8) | buf1[16];
+    cal->dig_P7 = (buf1[19] << 8) | buf1[18];
+    cal->dig_P8 = (buf1[21] << 8) | buf1[20];
+    cal->dig_P9 = (buf1[23] << 8) | buf1[22];
+
+    cal->dig_H2 = (buf2[1] << 8) | buf2[0];
+    cal->dig_H3 = buf2[2];
+    cal->dig_H4 = (buf2[3] << 4) | (buf2[4] & 0x0F);
+    cal->dig_H5 = (buf2[5] << 4) | (buf2[4] >> 4);
+    cal->dig_H6 = buf2[6];
+
+} 
+
+
+static int32_t t_fine;
+static int32_t BME280_compensate_T_int32(int32_t adc_T) {
+    int32_t var1, var2, T;
+    var1 = ((((adc_T>>3) – ((int32_t)dig_T1<<1))) * ((int32_t)dig_T2)) >> 11;
+    var2 = (((((adc_T>>4) – ((int32_t)dig_T1)) * ((adc_T>>4) – ((int32_t)dig_T1)))
+    >> 12) *
+    ((int32_t)dig_T3)) >> 14;
+    t_fine = var1 + var2;
+    T = (t_fine * 5 + 128) >> 8;
+    return T;
+}
+
+/**
  * This function reads 8 bytes, that is:
  * TEMPERATURE: 3 BYTES
  * PRESSURE: 3 BYTES
@@ -50,10 +105,11 @@ void bme280_read_from_device(i2c_master_dev_handle_t dev_handle) {
         ESP_LOGE(TAG, "Error reading sensor data");
     }
 
-    int32_t adc_P = (rx_data[0] << 12) | (rx_data[1] << 4) | (rx_data[2] >> 4);
-    int32_t adc_T = (rx_data[3] << 12) | (rx_data[4] << 4) | (rx_data[5] >> 4);
-    int32_t adc_H = (rx_data[6] << 8)  |  rx_data[7];
+   int32_t adc_P = ((int32_t)rx_data[0] << 12) | ((int32_t)rx_data[1] << 4) | ((int32_t)rx_data[2] >> 4);
 
+    int32_t adc_T = ((int32_t)rx_data[3] << 12) | ((int32_t)rx_data[4] << 4) | ((int32_t)rx_data[5] >> 4);
+
+    int32_t adc_H = ((int32_t)rx_data[6] << 8) |  (int32_t)rx_data[7];
 }
 
 
