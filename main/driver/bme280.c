@@ -46,11 +46,11 @@ static esp_err_t bme280_register_read(uint8_t reg_addr, uint8_t *data, size_t le
 
 static void bme280_read_calibration(bme280_calib_data_t *cal) {
 
-    uint8_t buf1[25];
+    uint8_t buf1[26];
     uint8_t buf2[7];
 
     // T and P calibration (0x88–0xA1)
-    bme280_register_read(0x88, buf1, 25);
+    bme280_register_read(0x88, buf1, 26);
 
     // H calibration part 1 (0xA1)
     cal->dig_H1 = buf1[25];
@@ -74,7 +74,7 @@ static void bme280_read_calibration(bme280_calib_data_t *cal) {
 
     cal->dig_H2 = (buf2[1] << 8) | buf2[0];
     cal->dig_H3 = buf2[2];
-    cal->dig_H4 = (buf2[3] << 4) | (buf2[4] & 0x0F);
+    cal->dig_H4 = (buf2[3] << 4) | (buf2[4] & 0x0F); // For later: stored as dig_H4 [11:4] / [3:0]
     cal->dig_H5 = (buf2[5] << 4) | (buf2[4] >> 4);
     cal->dig_H6 = buf2[6];
 
