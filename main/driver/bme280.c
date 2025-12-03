@@ -8,7 +8,7 @@
  * REPEATED START
  * that the IC asks for
  */
-static esp_err_t bme280_register_read(i2c_master_dev_handle_t dev_handle, uint8_t reg_addr, uint8_t *data, size_t len)
+static esp_err_t bme280_register_read(uint8_t reg_addr, uint8_t *data, size_t len)
 {
     esp_err_t err;
     i2c_cmd_handle_t cmd = i2c_cmd_link_create();
@@ -38,10 +38,16 @@ static esp_err_t bme280_register_read(i2c_master_dev_handle_t dev_handle, uint8_
     return err;
 }
 
+/**
+ * This function reads 8 bytes, that is:
+ * TEMPERATURE: 3 BYTES
+ * PRESSURE: 3 BYTES
+ * HUMIDITY: 2 BYTES
+ */
 void bme280_read_from_device(i2c_master_dev_handle_t dev_handle) {
     uint8_t rx_data[8];
-    if(i2c_master_receive(dev_handle, rx_data, 8, -1 ) != ESP_OK) {
-        ESP_LOGE(TAG, "Error reading data into rx_data[8]");
+    if(bme280_register_read(0xF7, rx_data, 8) != ESP_OK) {
+        ESP_LOGE(TAG, "Error reading sensor data");
     }
 
     int32_t adc_P = (rx_data[0] << 12) | (rx_data[1] << 4) | (rx_data[2] >> 4);

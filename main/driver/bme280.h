@@ -25,6 +25,4 @@ typedef struct {
 
 
 
-void bme_init(void);
-
-esp_err_t bme280_register_read(i2c_master_dev_handle_t dev_handle, uint8_t reg_addr, uint8_t *data, size_t len)
+bme280_DeviceBus* bme_init(void);
