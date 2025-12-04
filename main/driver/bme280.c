@@ -1,7 +1,7 @@
 #include "bme280.h"
 
 
-bme280_calib_data_t cal;
+static bme280_calib_data_t cal;
 
 /**
  * This function uses legacy method calls, becaus the BME280 needs code that's very fine tuned. 
@@ -119,7 +119,7 @@ uint32_t BME280_compensate_P_int64(int32_t adc_P)
     return (uint32_t)p;
 }
 
-
+// Returns humidity in %RH as unsigned 32 bit integer in Q22.10 format (22 integer and 10 fractional bits).
 // Output value of “47445” represents 47445/1024 = 46.333 %RH
 uint32_t bme280_compensate_H_int32(int32_t adc_H)
 {
@@ -143,17 +143,28 @@ uint32_t bme280_compensate_H_int32(int32_t adc_H)
  * PRESSURE: 3 BYTES
  * HUMIDITY: 2 BYTES
  */
-void bme280_read_from_device(i2c_master_dev_handle_t dev_handle) {
+static void bme280_read_from_device(bme280_comp_data_t *bme_data) {
     uint8_t rx_data[8];
     if(bme280_register_read(0xF7, rx_data, 8) != ESP_OK) {
         ESP_LOGE(TAG, "Error reading sensor data");
     }
 
-   int32_t adc_P = ((int32_t)rx_data[0] << 12) | ((int32_t)rx_data[1] << 4) | ((int32_t)rx_data[2] >> 4);
+    int32_t adc_P = ((int32_t)rx_data[0] << 12) | ((int32_t)rx_data[1] << 4) | ((int32_t)rx_data[2] >> 4);
 
     int32_t adc_T = ((int32_t)rx_data[3] << 12) | ((int32_t)rx_data[4] << 4) | ((int32_t)rx_data[5] >> 4);
 
     int32_t adc_H = ((int32_t)rx_data[6] << 8) |  (int32_t)rx_data[7];
+
+
+    int32_t comp_T = BME280_compensate_T_int32(adc_T);
+    uint32_t comp_P = BME280_compensate_P_int64(adc_P);
+    uint32_t comp_H = bme280_compensate_H_int32(adc_H);
+
+    bme_data->comp_T = comp_T;
+    bme_data->comp_P = comp_P;
+    bme_data->comp_H = comp_H;
+
+
 }
 
 
@@ -188,6 +199,14 @@ bme280_DeviceBus* bme_init(void) {
         .bus_handle = bus_handle,
         .dev_handle = dev_handle
     };
+
+    bme280_comp_data_t bme_data;
+
+    while(true) {
+        bme280_read_from_device(&bme280_data_t);
+        ESP_LOGI(TAG, "Data read as T: %d, P: %u, H: %u", bme_data.comp_T, bme_data.comp_P, bme_data.comp_H);
+        vTaskDelay(1500 / portTICK_PERIOD_MS);
+    }
 
     return &d_b_handle;
 }

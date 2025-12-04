@@ -2,6 +2,7 @@
 #include <stdint.h>
 #include "freertos/FreeRTOS.h"
 #include "driver/i2c_master.h"
+#include "nvs_flash.h"
 #include "driver/gpio.h"
 #include "esp_log.h"
 
@@ -14,6 +15,7 @@
 
 
 typedef struct {
+
     uint16_t dig_T1;
     int16_t  dig_T2;
     int16_t  dig_T3;
@@ -34,13 +36,23 @@ typedef struct {
     int16_t  dig_H4;
     int16_t  dig_H5;
     int8_t   dig_H6;
+
 } bme280_calib_data_t;
+
+typedef struct {
+
+    int32_t comp_T;
+    uint32_t comp_P;
+    uint32_t comp_H;
+
+} bme280_comp_data_t;
 
 
 typedef struct bme280_DeviceBus
 {
     i2c_master_bus_handle_t bus_handle;
     i2c_master_dev_handle_t dev_handle;
+
 } bme280_DeviceBus;
 
 typedef struct {
