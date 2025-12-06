@@ -1,7 +1,7 @@
 #pragma once
 #include <stdint.h>
 #include "freertos/FreeRTOS.h"
-#include "driver/i2c_master.h"
+#include "driver/i2c.h"
 #include "nvs_flash.h"
 #include "driver/gpio.h"
 #include "esp_log.h"
@@ -48,13 +48,6 @@ typedef struct {
 } bme280_comp_data_t;
 
 
-typedef struct bme280_DeviceBus
-{
-    i2c_master_bus_handle_t bus_handle;
-    i2c_master_dev_handle_t dev_handle;
-
-} bme280_DeviceBus;
-
 typedef struct {
     float temperature;
     float humidity;
@@ -62,5 +55,5 @@ typedef struct {
 } bme280_data_t;
 
 
-
-bme280_DeviceBus* bme_init(void);
+void bme_loop_read(void);
+void bme_init(void);

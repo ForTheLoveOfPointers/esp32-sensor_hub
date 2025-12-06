@@ -88,8 +88,8 @@ static void bme280_read_calibration(void) {
 static int32_t t_fine;
 static int32_t BME280_compensate_T_int32(int32_t adc_T) {
     int32_t var1, var2, T;
-    var1 = ((((adc_T>>3) – ((int32_t)cal.dig_T1<<1))) * ((int32_t)cal.dig_T2)) >> 11;
-    var2 = (((((adc_T>>4) – ((int32_t)cal.dig_T1)) * ((adc_T>>4) – ((int32_t)cal.dig_T1)))
+    var1 = ((((adc_T>>3) - ((int32_t)cal.dig_T1<<1))) * ((int32_t)cal.dig_T2)) >> 11;
+    var2 = (((((adc_T>>4) - ((int32_t)cal.dig_T1)) * ((adc_T>>4) - ((int32_t)cal.dig_T1)))
     >> 12) *
     ((int32_t)cal.dig_T3)) >> 14;
     t_fine = var1 + var2;
@@ -102,7 +102,7 @@ static int32_t BME280_compensate_T_int32(int32_t adc_T) {
 uint32_t BME280_compensate_P_int64(int32_t adc_P)
 {
     int64_t var1, var2, p;
-    var1 = ((int64_t)t_fine) – 128000;
+    var1 = ((int64_t)t_fine) - 128000;
     var2 = var1 * var1 * (int64_t)cal.dig_P6;
     var2 = var2 + ((var1*(int64_t)cal.dig_P5)<<17);
     var2 = var2 + (((int64_t)cal.dig_P4)<<35);
@@ -124,13 +124,13 @@ uint32_t BME280_compensate_P_int64(int32_t adc_P)
 uint32_t bme280_compensate_H_int32(int32_t adc_H)
 {
     int32_t v_x1_u32r;
-    v_x1_u32r = (t_fine – ((int32_t)76800));
-    v_x1_u32r = (((((adc_H << 14) – (((int32_t)cal.dig_H4) << 20) – (((int32_t)cal.dig_H5) *
+    v_x1_u32r = (t_fine - ((int32_t)76800));
+    v_x1_u32r = (((((adc_H << 14) - (((int32_t)cal.dig_H4) << 20) - (((int32_t)cal.dig_H5) *
     v_x1_u32r)) + ((int32_t)16384)) >> 15) * (((((((v_x1_u32r *
     ((int32_t)cal.dig_H6)) >> 10) * (((v_x1_u32r * ((int32_t)cal.dig_H3)) >> 11) +
     ((int32_t)32768))) >> 10) + ((int32_t)2097152)) * ((int32_t)cal.dig_H2) +
     8192) >> 14));
-    v_x1_u32r = (v_x1_u32r – (((((v_x1_u32r >> 15) * (v_x1_u32r >> 15)) >> 7) *
+    v_x1_u32r = (v_x1_u32r - (((((v_x1_u32r >> 15) * (v_x1_u32r >> 15)) >> 7) *
     ((int32_t)cal.dig_H1)) >> 4));
     v_x1_u32r = (v_x1_u32r < 0 ? 0 : v_x1_u32r);
     v_x1_u32r = (v_x1_u32r > 419430400 ? 419430400 : v_x1_u32r);
@@ -168,45 +168,30 @@ static void bme280_read_from_device(bme280_comp_data_t *bme_data) {
 }
 
 
-static void i2c_install(i2c_master_bus_handle_t *bus_handle, i2c_master_dev_handle_t *dev_handle) {
-    i2c_master_bus_config_t bus_cfg = {
-        .i2c_port = I2C_NUM_0,
+static void i2c_install() {
+    i2c_config_t conf = {
+        .mode = I2C_MODE_MASTER,
         .sda_io_num = SDA_IO,
         .scl_io_num = SCL_IO,
-        .clk_source = I2C_CLK_SRC_DEFAULT,
-        .glitch_ignore_cnt = 7,
-        .allow_pd = true
+        .sda_pullup_en = GPIO_PULLUP_ENABLE,
+        .scl_pullup_en = GPIO_PULLUP_ENABLE,
+        .master.clk_speed = 100000
     };
-
-    ESP_ERROR_CHECK( i2c_new_master_bus(&bus_cfg, bus_handle) );
-
-    i2c_device_config_t dev_cfg = {
-        .dev_addr_length = I2C_ADDR_BIT_LEN_7,
-        .device_addr = BME280_SENSOR_ADDR,
-        .scl_speed_hz = SCL_SPEED_HZ
-    };
-
-    ESP_ERROR_CHECK(i2c_master_bus_add_device(bus_handle, &dev_cfg, &dev_handle));
+    i2c_param_config(I2C_NUM_0, &conf);
+    i2c_driver_install(I2C_NUM_0, conf.mode, 0, 0, 0);
 }
 
-bme280_DeviceBus* bme_init(void) {
-    i2c_master_bus_handle_t bus_handle;
-    i2c_master_dev_handle_t dev_handle;
-    i2c_install(&bus_handle, &dev_handle);
-    ESP_LOGI(TAG, "I2C initialized successfully");
-
-    bme280_DeviceBus d_b_handle = {
-        .bus_handle = bus_handle,
-        .dev_handle = dev_handle
-    };
-
+void bme_loop_read(void) {
     bme280_comp_data_t bme_data;
 
-    while(true) {
-        bme280_read_from_device(&bme280_data_t);
-        ESP_LOGI(TAG, "Data read as T: %d, P: %u, H: %u", bme_data.comp_T, bme_data.comp_P, bme_data.comp_H);
-        vTaskDelay(1500 / portTICK_PERIOD_MS);
-    }
+    bme280_read_from_device(&bme_data);
+    ESP_LOGI(TAG, "Data read as T: %d, P: %u, H: %u", bme_data.comp_T, bme_data.comp_P, bme_data.comp_H);
+    vTaskDelay(1500 / portTICK_PERIOD_MS);
 
-    return &d_b_handle;
+}
+
+void bme_init(void) {
+    i2c_install();
+    bme280_read_calibration();
+    ESP_LOGI(TAG, "I2C initialized successfully");
 }
