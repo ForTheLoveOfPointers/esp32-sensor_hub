@@ -5,6 +5,7 @@
 #include "nvs_flash.h"
 #include "driver/gpio.h"
 #include "esp_log.h"
+#include "../queue_shared.h"
 
 #define SDA_IO GPIO_NUM_21
 #define SCL_IO GPIO_NUM_22
@@ -39,13 +40,7 @@ typedef struct {
 
 } bme280_calib_data_t;
 
-typedef struct {
 
-    int32_t comp_T;
-    uint32_t comp_P;
-    uint32_t comp_H;
-
-} bme280_comp_data_t;
 
 
 typedef struct {
