@@ -3,6 +3,7 @@
 #include "freertos/task.h"
 #include "freertos/queue.h"
 #include "queue_shared.h"
+#include "http_send_data.h"
 
 #include "driver/bme280.h"
 
@@ -22,11 +23,21 @@ void app_main(void)
 
     xTaskCreatePinnedToCore(
         bme_task,
-        "BME Task",
+        "BME_Task",
         4096,               
         NULL,               
-        1,                  
+        2,                  
         NULL,
         1
+    );
+
+    xTaskCreatePinnedToCore(
+        send_data_task,
+        "Send_Data_Task",
+        4096,
+        NULL,
+        2,
+        NULL,
+        0
     );
 }
